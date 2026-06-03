@@ -24,7 +24,8 @@ A lightning-fast, client-side web application designed to parse, filter, and exp
 
 ## [👉 Click here to test the App! 👈](https://r0mb0.github.io/Morph-it_Lexicon_Processor_Exporter/)
 
-
+[![01.png](https://github.com/R0mb0/Morph-it_Lexicon_Processor_Exporter/blob/main/Readme_imgs/01.png)](https://r0mb0.github.io/Morph-it_Lexicon_Processor_Exporter/)
+[![02.png](https://github.com/R0mb0/Morph-it_Lexicon_Processor_Exporter/blob/main/Readme_imgs/02.png)](https://r0mb0.github.io/Morph-it_Lexicon_Processor_Exporter/)
 
 </div>
 <hr>
