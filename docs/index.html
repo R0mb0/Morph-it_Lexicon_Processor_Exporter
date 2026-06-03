@@ -565,10 +565,6 @@
             }, 50);
         });
 
-        function generateAndDownloadFile(selectedCats) {
-            const format = exportFormat.value;
-            const selectedSet = new Set(selectedCats); // Set is faster for lookup
-
             // Filter data based on selected categories
             function generateAndDownloadFile(selectedCats) {
                         const format = exportFormat.value;
@@ -622,7 +618,6 @@
 
                         hideLoading();
                     }
-
     </script>
 </body>
 </html>
