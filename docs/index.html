@@ -375,98 +375,145 @@
         }
 
         /**
-         * BUILDING THE UI (Aggiornata con raggruppamento in Macro-Categorie)
+         * BUILDING THE UI (Aggiornata con raggruppamento Ricorsivo ad Albero)
          */
         function buildCategoryUI() {
-            // Update labels
             const foundTextHtml = t('categoriesFound').replace('{count}', uniqueCategories.length);
             document.getElementById('t-categories-found').innerHTML = foundTextHtml;
 
-            // Clear previous grid
             checkboxGrid.innerHTML = '';
-            
-            // Modifichiamo la classe della griglia per ospitare i blocchi verticali in modo elegante
-            checkboxGrid.className = "space-y-6 max-h-[500px] overflow-y-auto p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700";
+            // Rimuoviamo il layout a griglia dal contenitore principale per favorire l'albero verticale
+            checkboxGrid.className = "max-h-[500px] overflow-y-auto p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700";
 
-            // 1. Raggruppiamo dinamicamente le categorie in base al prefisso (Macro-categoria)
-            const groups = {};
+            // 1. Costruiamo l'albero logico dai tag
+            const tree = {};
             uniqueCategories.forEach(cat => {
-                // Estrae il prefisso prima di ":" o "-" (es: "ADJ", "VER", "NOUN")
-                let macro = cat.includes(':') ? cat.split(':')[0] : (cat.includes('-') ? cat.split('-')[0] : cat);
+                // Dividiamo la stringa usando ':' e '+' come separatori per creare i livelli.
+                // Es. "VER:ind+pres+1+p" diventa ["VER", "ind", "pres", "1", "p"]
+                const parts = cat.split(/[:+]/); 
+                let current = tree;
                 
-                if (!groups[macro]) groups[macro] = [];
-                groups[macro].push(cat);
+                parts.forEach((part, index) => {
+                    if (!current[part]) {
+                        current[part] = { _children: {}, _fullValue: null };
+                    }
+                    // Se siamo arrivati all'ultimo pezzo, salviamo il valore originale per l'esportazione
+                    if (index === parts.length - 1) {
+                        current[part]._fullValue = cat;
+                    }
+                    current = current[part]._children;
+                });
             });
 
-            // 2. Generiamo l'interfaccia ad albero/blocchi per ogni Macro-categoria
-            Object.keys(groups).sort().forEach((macro, groupIdx) => {
-                
-                // Contenitore della macro-categoria
-                const groupWrapper = document.createElement('div');
-                groupWrapper.className = "bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-all";
+            let checkboxIdCounter = 0; // Serve per generare ID unici per le label
 
-                // Intestazione del gruppo (Titolo + Pulsante di selezione rapida della ramificazione)
-                const header = document.createElement('div');
-                header.className = "flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-2 mb-3";
-                
-                const title = document.createElement('h3');
-                title.className = "text-sm font-bold text-green-500 dark:text-primary flex items-center gap-2 tracking-wide uppercase";
-                title.innerText = `${macro} (${groups[macro].length})`;
+            // 2. Funzione ricorsiva per generare l'interfaccia HTML dell'albero
+            function createTreeUI(nodeObj, level = 0) {
+                const wrapper = document.createElement('div');
+                // Indentazione dinamica: il livello 0 non è indentato, i sotto-livelli si spostano a destra con una linea laterale
+                wrapper.className = level === 0 ? "space-y-3" : "pl-6 mt-2 border-l border-gray-300 dark:border-gray-600 space-y-2";
 
-                const btnToggleGroup = document.createElement('button');
-                btnToggleGroup.className = "px-2 py-1 text-xs font-semibold rounded bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors";
-                btnToggleGroup.innerText = lang === 'it' ? "Seleziona Gruppo" : "Select Group";
-                
-                header.appendChild(title);
-                header.appendChild(btnToggleGroup);
-                groupWrapper.appendChild(header);
-
-                // Griglia interna per le sotto-caratteristiche di questa macro-categoria
-                const subGrid = document.createElement('div');
-                subGrid.className = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2";
-
-                groups[macro].forEach((cat, catIdx) => {
-                    const id = `cat_${groupIdx}_${catIdx}`;
+                Object.keys(nodeObj).sort().forEach(key => {
+                    const node = nodeObj[key];
+                    const hasChildren = Object.keys(node._children).length > 0;
                     
-                    const wrapper = document.createElement('div');
-                    wrapper.className = "flex items-center space-x-2 p-1.5 rounded hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors";
+                    const itemDiv = document.createElement('div');
 
-                    const checkbox = document.createElement('input');
-                    checkbox.type = "checkbox";
-                    checkbox.id = id;
-                    checkbox.value = cat; // Mantiene il tag intero per non rompere il sistema di esportazione
-                    checkbox.className = "cat-checkbox focus:ring-primary h-4 w-4 text-primary border-gray-300 rounded";
+                    if (hasChildren) {
+                        // Ramo (Branch) - Elemento Collapsabile usando il tag <details>
+                        const details = document.createElement('details');
+                        details.className = "bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm";
+                        
+                        const summary = document.createElement('summary');
+                        summary.className = "flex items-center justify-between p-2 cursor-pointer list-none hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors rounded-lg select-none";
+                        
+                        const titleSpan = document.createElement('span');
+                        titleSpan.className = `flex items-center gap-2 font-bold ${level === 0 ? 'text-primary uppercase' : 'text-gray-700 dark:text-gray-300'}`;
+                        
+                        // SVG Freccia animata
+                        titleSpan.innerHTML = `<svg class="w-4 h-4 text-gray-400 transition-transform details-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                               <span>${key}</span>`;
 
-                    const label = document.createElement('label');
-                    label.htmlFor = id;
-                    label.className = "text-xs font-medium text-gray-600 dark:text-gray-400 select-none cursor-pointer w-full break-all";
-                    
-                    // Pulizia visiva: mostra solo la ramificazione specifica (es. trasforma "ADJ:pos+f+s" in "pos+f+s")
-                    const subLabel = cat.includes(':') ? cat.substring(cat.indexOf(':') + 1) : cat;
-                    label.innerText = subLabel;
+                        // JS per ruotare la freccia quando l'utente apre/chiude il <details>
+                        details.addEventListener('toggle', () => {
+                            const arrow = summary.querySelector('.details-arrow');
+                            if (details.open) arrow.classList.add('rotate-90');
+                            else arrow.classList.remove('rotate-90');
+                        });
 
-                    wrapper.appendChild(checkbox);
-                    wrapper.appendChild(label);
-                    subGrid.appendChild(wrapper);
+                        // Gruppo pulsanti Seleziona/Deseleziona
+                        const btnGroup = document.createElement('div');
+                        btnGroup.className = "flex gap-1";
+                        
+                        const btnSelect = document.createElement('button');
+                        btnSelect.className = "px-2 py-1 text-[10px] font-bold rounded bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 transition-colors uppercase";
+                        btnSelect.innerText = "✓ " + (lang === 'it' ? "Tutti" : "All");
+                        
+                        const btnDeselect = document.createElement('button');
+                        btnDeselect.className = "px-2 py-1 text-[10px] font-bold rounded bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 transition-colors uppercase";
+                        btnDeselect.innerText = "✕ " + (lang === 'it' ? "Nessuno" : "None");
+
+                        // Gestore per i pulsanti (usa preventDefault per non far chiudere/aprire il pannello quando clicchi i tasti)
+                        const actionHandler = (checkStatus) => (e) => {
+                            e.preventDefault();
+                            const cbs = details.querySelectorAll('.cat-checkbox');
+                            cbs.forEach(cb => cb.checked = checkStatus);
+                        };
+
+                        btnSelect.onclick = actionHandler(true);
+                        btnDeselect.onclick = actionHandler(false);
+
+                        btnGroup.appendChild(btnSelect);
+                        btnGroup.appendChild(btnDeselect);
+
+                        summary.appendChild(titleSpan);
+                        summary.appendChild(btnGroup);
+                        details.appendChild(summary);
+
+                        // Corpo interno ricorsivo (chiamata a se stessa)
+                        const body = document.createElement('div');
+                        body.className = "p-2 pt-0";
+                        body.appendChild(createTreeUI(node._children, level + 1));
+                        
+                        details.appendChild(body);
+                        itemDiv.appendChild(details);
+
+                    } else {
+                        // Foglia (Leaf) - L'ultimo livello della nostra categoria diventa la checkbox finale
+                        checkboxIdCounter++;
+                        const id = `cat_node_${checkboxIdCounter}`;
+                        
+                        const wrapperUI = document.createElement('div');
+                        wrapperUI.className = "flex items-center space-x-3 py-1.5 px-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700/40 transition-colors";
+
+                        const checkbox = document.createElement('input');
+                        checkbox.type = "checkbox";
+                        checkbox.id = id;
+                        checkbox.value = node._fullValue;
+                        checkbox.className = "cat-checkbox focus:ring-primary h-4 w-4 text-primary border-gray-300 rounded cursor-pointer";
+
+                        const label = document.createElement('label');
+                        label.htmlFor = id;
+                        label.className = "text-sm font-medium text-gray-600 dark:text-gray-400 select-none cursor-pointer w-full";
+                        label.innerText = key; // Mostra solo il nome dell'ultima caratteristica, non l'intera stringa
+
+                        wrapperUI.appendChild(checkbox);
+                        wrapperUI.appendChild(label);
+                        itemDiv.appendChild(wrapperUI);
+                    }
+
+                    wrapper.appendChild(itemDiv);
                 });
 
-                // Logica del pulsante del gruppo: se almeno una sotto-voce è deselezionata, le seleziona tutte. Altrimenti le svuota.
-                btnToggleGroup.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const subCbs = subGrid.querySelectorAll('.cat-checkbox');
-                    const anyUnchecked = Array.from(subCbs).some(cb => !cb.checked);
-                    subCbs.forEach(cb => cb.checked = anyUnchecked);
-                });
+                return wrapper;
+            }
 
-                groupWrapper.appendChild(subGrid);
-                checkboxGrid.appendChild(groupWrapper);
-            });
+            // 3. Montiamo l'albero HTML generato nel DOM
+            checkboxGrid.appendChild(createTreeUI(tree));
 
-            // Mostra le sezioni successive con l'animazione verticale
             showSection(step2);
             showSection(step3);
             
-            // Scroll fluido verso la sezione di selezione
             setTimeout(() => {
                 step2.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 100);
