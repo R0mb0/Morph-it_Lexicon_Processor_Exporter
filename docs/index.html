@@ -375,7 +375,7 @@
         }
 
         /**
-         * BUILDING THE UI
+         * BUILDING THE UI (Aggiornata con raggruppamento in Macro-Categorie)
          */
         function buildCategoryUI() {
             // Update labels
@@ -384,37 +384,89 @@
 
             // Clear previous grid
             checkboxGrid.innerHTML = '';
+            
+            // Modifichiamo la classe della griglia per ospitare i blocchi verticali in modo elegante
+            checkboxGrid.className = "space-y-6 max-h-[500px] overflow-y-auto p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700";
 
-            // Create Checkboxes
-            uniqueCategories.forEach((cat, index) => {
-                const id = `cat_${index}`;
+            // 1. Raggruppiamo dinamicamente le categorie in base al prefisso (Macro-categoria)
+            const groups = {};
+            uniqueCategories.forEach(cat => {
+                // Estrae il prefisso prima di ":" o "-" (es: "ADJ", "VER", "NOUN")
+                let macro = cat.includes(':') ? cat.split(':')[0] : (cat.includes('-') ? cat.split('-')[0] : cat);
                 
-                const wrapper = document.createElement('div');
-                wrapper.className = "flex items-center space-x-3 p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors";
-
-                const checkbox = document.createElement('input');
-                checkbox.type = "checkbox";
-                checkbox.id = id;
-                checkbox.value = cat;
-                checkbox.className = "cat-checkbox focus:ring-primary h-4 w-4 text-primary border-gray-300 rounded";
-                // Disabled by default logic: HTML checkboxes are unchecked by default. 
-
-                const label = document.createElement('label');
-                label.htmlFor = id;
-                label.className = "text-sm font-medium text-gray-700 dark:text-gray-300 select-none cursor-pointer w-full break-all";
-                label.innerText = cat;
-
-                wrapper.appendChild(checkbox);
-                wrapper.appendChild(label);
-                checkboxGrid.appendChild(wrapper);
+                if (!groups[macro]) groups[macro] = [];
+                groups[macro].push(cat);
             });
 
-            // Transition UI: Hide step 1 slightly (or keep it, but user requested vertical flow. Let's keep it but scroll)
-            // Actually, keeping step 1 visible is better for UX if they want to upload another file.
+            // 2. Generiamo l'interfaccia ad albero/blocchi per ogni Macro-categoria
+            Object.keys(groups).sort().forEach((macro, groupIdx) => {
+                
+                // Contenitore della macro-categoria
+                const groupWrapper = document.createElement('div');
+                groupWrapper.className = "bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-all";
+
+                // Intestazione del gruppo (Titolo + Pulsante di selezione rapida della ramificazione)
+                const header = document.createElement('div');
+                header.className = "flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-2 mb-3";
+                
+                const title = document.createElement('h3');
+                title.className = "text-sm font-bold text-green-500 dark:text-primary flex items-center gap-2 tracking-wide uppercase";
+                title.innerText = `${macro} (${groups[macro].length})`;
+
+                const btnToggleGroup = document.createElement('button');
+                btnToggleGroup.className = "px-2 py-1 text-xs font-semibold rounded bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 transition-colors";
+                btnToggleGroup.innerText = lang === 'it' ? "Seleziona Gruppo" : "Select Group";
+                
+                header.appendChild(title);
+                header.appendChild(btnToggleGroup);
+                groupWrapper.appendChild(header);
+
+                // Griglia interna per le sotto-caratteristiche di questa macro-categoria
+                const subGrid = document.createElement('div');
+                subGrid.className = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2";
+
+                groups[macro].forEach((cat, catIdx) => {
+                    const id = `cat_${groupIdx}_${catIdx}`;
+                    
+                    const wrapper = document.createElement('div');
+                    wrapper.className = "flex items-center space-x-2 p-1.5 rounded hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors";
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = "checkbox";
+                    checkbox.id = id;
+                    checkbox.value = cat; // Mantiene il tag intero per non rompere il sistema di esportazione
+                    checkbox.className = "cat-checkbox focus:ring-primary h-4 w-4 text-primary border-gray-300 rounded";
+
+                    const label = document.createElement('label');
+                    label.htmlFor = id;
+                    label.className = "text-xs font-medium text-gray-600 dark:text-gray-400 select-none cursor-pointer w-full break-all";
+                    
+                    // Pulizia visiva: mostra solo la ramificazione specifica (es. trasforma "ADJ:pos+f+s" in "pos+f+s")
+                    const subLabel = cat.includes(':') ? cat.substring(cat.indexOf(':') + 1) : cat;
+                    label.innerText = subLabel;
+
+                    wrapper.appendChild(checkbox);
+                    wrapper.appendChild(label);
+                    subGrid.appendChild(wrapper);
+                });
+
+                // Logica del pulsante del gruppo: se almeno una sotto-voce è deselezionata, le seleziona tutte. Altrimenti le svuota.
+                btnToggleGroup.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const subCbs = subGrid.querySelectorAll('.cat-checkbox');
+                    const anyUnchecked = Array.from(subCbs).some(cb => !cb.checked);
+                    subCbs.forEach(cb => cb.checked = anyUnchecked);
+                });
+
+                groupWrapper.appendChild(subGrid);
+                checkboxGrid.appendChild(groupWrapper);
+            });
+
+            // Mostra le sezioni successive con l'animazione verticale
             showSection(step2);
             showSection(step3);
             
-            // Smooth scroll to step 2
+            // Scroll fluido verso la sezione di selezione
             setTimeout(() => {
                 step2.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 100);
