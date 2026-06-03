@@ -72,6 +72,12 @@ A lightning-fast, client-side web application designed to parse, filter, and exp
 <li>Double-click <code>index.html</code> to open it in your browser. No local server required!</li>
 </ol>
 
+## 📄 Get a sample dataset
+
+[https://docs.sslmit.unibo.it/doku.php?id=resources:morph-it](https://docs.sslmit.unibo.it/doku.php?id=resources:morph-it)
+
+
+
 <br>
 
 <a href="https://github.com/R0mb0/Crafted_with_AI">
